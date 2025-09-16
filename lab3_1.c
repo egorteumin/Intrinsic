@@ -18,37 +18,58 @@ int find_max(double *arr, double *max, int *index, int size){
     *max = arr[0];
     *index = 0;
     for(int i = 0; i < size; i+=2){
-        __m128d reg_arr = _mm_loadu_pd(arr+i);
-        __m128d reg_max = _mm_set1_pd(*max);
-    
-        __m128d reg_new_max = _mm_max_pd(reg_max, reg_arr);
+        // Загружаем в регистр два элемента из массива
+        __m128d reg_arr = _mm_loadu_pd(arr+i); // [a, b]
 
-        __m128d cmp_res = _mm_cmpneq_pd(reg_new_max, reg_max);
-                
-        int mask = _mm_movemask_pd(cmp_res);
+        // Инициализируем регистр временным максимумом
+        __m128d reg_max = _mm_set1_pd(*max); // [max, max]
 
+        // Получаем наибольшые значение между элементами массивва и максимальным значением
+        __m128d reg_new_max = _mm_max_pd(reg_max, reg_arr); // [max, max] или [a, max] или [max, b] или [a, b]
+
+        // Сравниваем (!=) "новый" максимум с текущим
+        __m128d cmp_res = _mm_cmpneq_pd(reg_new_max, reg_max); // [0, 0] или [-1, 0] или [0, -1] или [-1, -1]
+
+        // Получаем маску
+        int mask = _mm_movemask_pd(cmp_res); // 00 или 10 или 01 или 11
+
+        // Если первое число в "новом" максимуме больше
         if(mask & 0b01){
-            *index = i;
+            *index = i; // Берём индекс первого числа
         }
+        // Если второе число в "новом" максимуме больше
         else if(mask & 0b10){
-            *index = i+1;
+            *index = i+1; // Берём индекс второго числа
         }
-        else if(mask & 0b00){
+        // Если оба числа в "новом" максимуме больше
+        else if(mask & 0b11){
+            // Свапаем значения в "новом" максимуме
             __m128d swap = _mm_shuffle_pd(reg_new_max, reg_new_max, _MM_SHUFFLE2(0, 1));
+            
+            // Сравниваем (>=) "новый" максимум с его свапнутой версией, чтобы понять какое из чисел больше
             __m128d cmp = _mm_cmpgt_pd(reg_new_max, swap);
+
+            // Получаем маску
             mask = _mm_movemask_pd(cmp);
-            if(mask & 0b01){
-                *index = i;
+            
+            // Если второе больше
+            if(mask & 0b10){
+                *index = i+1; // Берём индекс второго числа
             }
+            // Если первое больше или они равны
             else{
-                *index = i+1;
+                *index = i; // Берём индекс первого числа
             }
         }
 
+        // Заполняем регистр наибольшим из двух чисел
         reg_new_max = _mm_max_pd(reg_new_max, _mm_shuffle_pd(reg_new_max, reg_new_max, _MM_SHUFFLE2(0, 1)));
+        
+        // Берём первое число из регистра
         *max = _mm_cvtsd_f64(reg_new_max);
     }
 
+    // Если размер массива не кратен двум, то дополнительно проверяем последний элемент массива
     if(size % 2 != 0 && arr[size-1] > *max){
         *max = arr[size-1];
         *index = size-1;
@@ -124,6 +145,7 @@ int main(int argc, char **argv){
     find_max(arr, &max, &index, arr_size_i);
 
     printf("Max element: %f\nIndex: %d\n", max, index);
+    // printf("%f\n", arr[index]);
 
     free(arr);
     return 0;

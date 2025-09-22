@@ -17,7 +17,7 @@ int find_max(double *arr, double *max, int *index, int size){
 
     *max = arr[0];
     *index = 0;
-    for(int i = 0; i < size; i+=2){
+    for(int i = 0; i+1 < size; i+=2){
         // Загружаем в регистр два элемента из массива
         __m128d reg_arr = _mm_loadu_pd(arr+i); // [a, b]
 
@@ -33,16 +33,8 @@ int find_max(double *arr, double *max, int *index, int size){
         // Получаем маску
         int mask = _mm_movemask_pd(cmp_res); // 00 или 10 или 01 или 11
 
-        // Если первое число в "новом" максимуме больше
-        if(mask & 0b01){
-            *index = i; // Берём индекс первого числа
-        }
-        // Если второе число в "новом" максимуме больше
-        else if(mask & 0b10){
-            *index = i+1; // Берём индекс второго числа
-        }
         // Если оба числа в "новом" максимуме больше
-        else if(mask & 0b11){
+        if(mask & 0b11){
             // Свапаем значения в "новом" максимуме
             __m128d swap = _mm_shuffle_pd(reg_new_max, reg_new_max, _MM_SHUFFLE2(0, 1));
             
@@ -51,15 +43,15 @@ int find_max(double *arr, double *max, int *index, int size){
 
             // Получаем маску
             mask = _mm_movemask_pd(cmp);
-            
-            // Если второе больше
-            if(mask & 0b10){
-                *index = i+1; // Берём индекс второго числа
-            }
-            // Если первое больше или они равны
-            else{
-                *index = i; // Берём индекс первого числа
-            }
+        }
+
+        // Если второе больше
+        if(mask & 0b10){
+            *index = i+1; // Берём индекс второго числа
+        }
+        // Если первое больше или они равны
+        else if ((mask & 0b01) | (mask & 0b11)){
+            *index = i; // Берём индекс первого числа
         }
 
         // Заполняем регистр наибольшим из двух чисел

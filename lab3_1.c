@@ -39,18 +39,18 @@ int find_max(double *arr, double *max, int *index, int size){
             __m128d swap = _mm_shuffle_pd(reg_new_max, reg_new_max, _MM_SHUFFLE2(0, 1));
             
             // Сравниваем (>=) "новый" максимум с его свапнутой версией, чтобы понять какое из чисел больше
-            __m128d cmp = _mm_cmpgt_pd(reg_new_max, swap);
+            __m128d cmp = _mm_cmpge_pd(reg_new_max, swap);
 
             // Получаем маску
             mask = _mm_movemask_pd(cmp);
         }
 
         // Если второе больше
-        if(mask & 0b10){
+        if(mask == 2){
             *index = i+1; // Берём индекс второго числа
         }
         // Если первое больше или они равны
-        else if ((mask & 0b01) | (mask & 0b11)){
+        else if (mask == 1 || mask == 3){
             *index = i; // Берём индекс первого числа
         }
 
